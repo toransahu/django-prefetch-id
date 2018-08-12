@@ -10,14 +10,86 @@ prefetch_id.py
 from uuid import uuid4
 from django.db import connection
 from django.conf import settings
+from .exception import InvalidDBEngine
 
 
 __author__ = 'Toran Sahu  <toran.sahu@yahoo.com>'
 __license__ = 'Distributed under terms of the AGPL license.'
 
 
-def prefetch_id(instance):
+class DBEngine:
+    r"""
+    Database Engine Class.
     """
+
+    def __init__(self):
+        r"""
+        Set DB Engine as Default Database in Django Settings.
+        :return: String, DB Engine Name
+        """
+        self.db_engine = connection.settings_dict['ENGINE']
+        return self.db_engine
+
+    def set_db_engine(self, db_engine):
+        r"""
+        Set DB Engine of your choice.
+        :param db_engine: String, DB Engine Name
+        :return: String, DB Engine Name
+        """
+        self.db_engine = db_engine
+        return self.db_engine
+
+    def get_db_engine(self):
+        r"""
+        Return selected DB Engine.
+        :return: String, DB Engine Name
+        """
+        return self.db_engine
+
+
+class PrefetchID:
+    r"""
+    Prefetch Model ID.
+    """
+
+    def __init__(self):
+        r"""
+        Initialize with default DB Engine
+        """
+        self.db_engine = DBEngine()
+
+    def set_db_engine(self, db_engine_obj):
+        r"""
+        Set DB Engine of your choice.
+        :param db_engine: DBEngine Class Object
+        :return: String, DB Engine Name
+        """
+        self.db_engine = db_engine_obj.db_engine
+        return self.db_engine
+
+    def prefetch_id(self, model_instance):
+        r"""
+        Prefetch Model ID by Model Instance (Default).
+
+        :param model_instance:
+        :return: Integer, Next Sequence ID/Number for the given Model Instance
+        """
+        pass
+
+    def prefetch_id_by_table(self, table_name):
+        r"""
+        Prefetch Model ID by Table Name.
+
+        :param table_name: String, Model Table Name
+        :return: Integer, Next Sequence ID/Number for the given Table
+        """
+        pass
+
+
+
+
+def prefetch_id(instance):
+    r"""
     Prefetch (fetches next) sequence for particular model from different databases.
     :param instance: <instance> of Model
     :return: <int> sequence id
@@ -43,7 +115,8 @@ def prefetch_id(instance):
         database_name = settings.DATABASES['default']['NAME']
         table_name = instance._meta.app_label.lower() + '_' + instance._meta.object_name.lower()
         cursor.execute(
-            f"select auto_increment from information_schema.tables where auto_increment is not null and table_schema = '{database_name}' and table_name = '{table_name}'")
+            f"select auto_increment from information_schema.tables "
+            f"where auto_increment is not null and table_schema = '{database_name}' and table_name = '{table_name}'")
         row = cursor.fetchone()
         cursor.close()
         seq_id = int(row[0])
@@ -62,7 +135,8 @@ def prefetch_id(instance):
     elif db_engine == 'django.db.backends.oracle':
         pass
     else:
-        raise
+        raise InvalidDBEngine
+
 
 def directory_path_with_id(instance, filename):
     """
@@ -79,7 +153,7 @@ def directory_path_with_id(instance, filename):
     else:
         current_id = instance.id
     try:
-        file, ext = filename.rsplit('.',1)
+        file, ext = filename.rsplit('.', 1)
         return str.lower(f'{instance._meta.app_label}/{instance._meta.object_name}/{current_id}/{uuid4()}.{ext}')
     except:
         return str.lower(f'{instance._meta.app_label}/{instance._meta.object_name}/{current_id}/{filename}')
